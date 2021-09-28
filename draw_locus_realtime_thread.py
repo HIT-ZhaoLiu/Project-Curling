@@ -13,7 +13,7 @@ def getHomography(homography_path):
         print("------",h_path)
         H_array.append(self.get_xy(h_path))
     print('Homography has been loaded!, Total: {}'.format(len(H_array)))
-return H_array    
+    return H_array    
 ######UDP接收数据######
 class Plot_Realtime(threading.Thread):
     def __init__(self, homography_path,ratio=1):
