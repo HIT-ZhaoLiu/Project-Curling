@@ -7,6 +7,7 @@ import socket
 import time
 import threading
 import ctypes
+import copy
 ######读取标定H矩阵######
 def getHomography(homography_path):
     H_array = []
@@ -65,6 +66,7 @@ class Plot_Realtime(threading.Thread):
                     else:
                         locus[red_locus_num][int(cord[4])][0].append(x_world)
                         locus[red_locus_num][int(cord[4])][1].append(y_world)
+                        #locus[red_locus_num][int(cord[4])].append([[x_world],[y_world]])
                     print(cord[4])
                 for j, cord in enumerate(data_yellow):
                     x_world, y_world = self.get_world_xy(int((cord[0]+cord[2])/2), int((cord[1]+cord[3])/2), H_array[i])
@@ -74,8 +76,13 @@ class Plot_Realtime(threading.Thread):
                     else:
                         locus[yellow_locus_num][int(cord[4])][0].append(x_world)
                         locus[yellow_locus_num][int(cord[4])][1].append(y_world)
+                        #locus[yellow_locus_num][int(cord[4])].append([[x_world],[y_world]])
                     print("cord[4]",cord[4])
-    
+                global locus1 
+                locus1= copy.deepcopy(locus)
+                global locus1_address
+                locus1_address=id(locus1)
+                #print(locus1)
     def get_world_xy(self,x,y,homography):
         '''
         功能：通过单应性矩阵将图像坐标x，y转换成世界坐标x_world,y_world
@@ -93,42 +100,56 @@ class plotThread(threading.Thread):
     def run(self):
         ratio=1
         plt.ion()
-        img = plt.imread(self.board_path)
-        fig, ax = plt.subplots()
-        ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
+        #img = plt.imread(self.board_path)
+        #fig, ax = plt.subplots()
+        #ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
         while True:
-            locus = ctypes.cast(locus_address, ctypes.py_object).value
-            img = plt.imread(self.board_path)
+            #global locus1
+            locus1 = ctypes.cast(locus1_address, ctypes.py_object).value
+            print("locus1:",locus1)
+            #for i in range(len(locus)):
+            #    for j, ids in enumerate(locus[i]):
+            #        if len(locus[i][ids][0]) != len(locus[i][ids][1]):
+            #            locus = ctypes.cast(locus_address, ctypes.py_object).value
+                        #print(type(locus[i][ids]))
+                        #print(type(locus[i][ids][0]))
+                        #if len(locus[i][ids][0]) > len(locus[i][ids][1]):
+                        #    len(locus[i][ids][0]).pop(-1)
+                        #else:
+                        #    len(locus[i][ids][1]).pop(-1)
+            #img = plt.imread(self.board_path)
             #----------------------------------#
             #           刷写坐标
             #----------------------------------#
             plot_t1=time.time()
             plt.cla()
-                #print("00000000000000000000000000000")
+            #print("00000000000000000000000000000")
             ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
-                #print("11111111111111111111111111111")
+            #print("11111111111111111111111111111")
             #----------------------------------#
             #       统计冰壶球个数
             #----------------------------------#
-            yellow_nums = len(locus[-1].keys())     #黄色冰壶数量
-            red_nums = len(locus[-2].keys())        #红色冰壶数量
+            yellow_nums = len(locus1[-1].keys())     #黄色冰壶数量
+            red_nums = len(locus1[-2].keys())        #红色冰壶数量
             plt.text(0, 165, s='yellow:{}'.format(yellow_nums), fontsize=10)
             plt.text(0, 180, s='red:{}'.format(red_nums), fontsize=10)
-                ## print('y=', yellow_nums)
-                ## print('r=', red_nums)
+            ## print('y=', yellow_nums)
+            ## print('r=', red_nums)
             #----------------------------------#
             #           实时绘制坐标
             #——————————————————————————————————#
             colors = ['red', 'yellow']
-            for i in range(len(locus)):
-                for j, ids in enumerate(locus[i]):
+            for i in range(len(locus1)):
+                for j, ids in enumerate(locus1[i]):
                     color = colors[i % 2]
-                    #if len(locus[i][ids][0])==len(locus[i][ids][1]):
-                    plt.plot(locus[i][ids][0], locus[i][ids][1], color=color)
+                    plt.plot(locus1[i][ids][0], locus1[i][ids][1], color=color)
+                    #print(type(locus[i][ids]))
+                    #print(type(locus[i][ids][0]))
             plot_t2=time.time()
             print("画图时间：",plot_t2-plot_t1)
             plt.pause(0.001)
             plt.ion()
+
     
 
 if __name__ == "__main__":
@@ -139,8 +160,16 @@ if __name__ == "__main__":
     H_path = [homograpthy_path_1]#, homograpthy_path_2, homograpthy_path_3]
     H_array = getHomography(H_path)
     locus = [{} for i in range( len(H_array)*2 ) ]
+    locus1 = [{} for i in range( len(H_array)*2 ) ]
     locus_address=id(locus)
-    
+    locus1_address=id(locus1)
+    ratio=1
+    plt.ion()
+    img = plt.imread(img_path)
+    fig, ax = plt.subplots()
+    ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
+    #t=0
+    #t_address=id(t)
     #getLocus=Plot_Realtime()
     thread_01 = Plot_Realtime(H_array)
 
