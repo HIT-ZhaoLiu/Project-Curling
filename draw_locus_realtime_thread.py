@@ -16,16 +16,17 @@ def getHomography(homography_path):
     return H_array    
 ######UDP接收数据######
 class Plot_Realtime(threading.Thread):
-    def __init__(self, homography_path,ratio=1):
+    def __init__(self, H_array,ratio=1):
         threading.Thread.__init__(self)
         #self.board_path = board_path
-        self.homography_path = homography_path
+        #self.homography_path = homography_path
+        self.H_array = H_array
         self.ratio=ratio
     def run(self):    
         global locus
         # UDP 建立
         #建立IPv4,UDP的socket
-        sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for i in range(len(H_array))]
+        sockets = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM) for i in range(len(self.H_array))]
         #绑定端口：
         for i, s in enumerate(sockets):
             s.bind(('192.168.3.8', 9990+i))
@@ -92,7 +93,7 @@ class plotThread(threading.Thread):
     def run(self):
         locus = ctypes.cast(locus_address, ctypes.py_object).value
         plt.ion()
-        img = plt.imread(board_path)
+        img = plt.imread(self.board_path)
         fig, ax = plt.subplots()
         ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
 
