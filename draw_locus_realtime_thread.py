@@ -6,14 +6,22 @@ import os
 import socket
 import time
 import threading
+import ctypes
 ######读取标定H矩阵######
 def getHomography(homography_path):
-    global H_array = []
+    H_array = []
     for i, h_path in enumerate(homography_path):
         print("------",h_path)
-        H_array.append(self.get_xy(h_path))
+        H_array.append(get_xy(h_path))
     print('Homography has been loaded!, Total: {}'.format(len(H_array)))
-    return H_array    
+    return H_array 
+def get_xy(xy_path):
+    # 将坐标点的集合文件.csv读取，并转换成numpy数组进行返回
+    xy_csv = open(xy_path, encoding='utf-8')
+    xy_data = pd.read_csv(xy_csv, header=None)
+    print('loaded data from CSV!')
+    xy_numpy = xy_data.to_numpy()
+    return xy_numpy   
 ######UDP接收数据######
 class Plot_Realtime(threading.Thread):
     def __init__(self, H_array,ratio=1):
@@ -60,21 +68,13 @@ class Plot_Realtime(threading.Thread):
                     print(cord[4])
                 for j, cord in enumerate(data_yellow):
                     x_world, y_world = self.get_world_xy(int((cord[0]+cord[2])/2), int((cord[1]+cord[3])/2), H_array[i])
-                    
+                    print("x_world, y_world:",x_world, y_world)
                     if cord[4] not in locus[yellow_locus_num].keys():
                         locus[yellow_locus_num][int(cord[4])] = ([[x_world], [y_world]])
                     else:
                         locus[yellow_locus_num][int(cord[4])][0].append(x_world)
                         locus[yellow_locus_num][int(cord[4])][1].append(y_world)
                     print("cord[4]",cord[4])
-        
-    def get_xy(self,xy_path):
-        # 将坐标点的集合文件.csv读取，并转换成numpy数组进行返回
-        xy_csv = open(xy_path, encoding='utf-8')
-        xy_data = pd.read_csv(xy_csv, header=None)
-        print('loaded data from CSV!')
-        xy_numpy = xy_data.to_numpy()
-        return xy_numpy
     
     def get_world_xy(self,x,y,homography):
         '''
@@ -91,41 +91,44 @@ class plotThread(threading.Thread):
         threading.Thread.__init__(self)
         self.board_path = board_path
     def run(self):
-        locus = ctypes.cast(locus_address, ctypes.py_object).value
+        ratio=1
         plt.ion()
         img = plt.imread(self.board_path)
         fig, ax = plt.subplots()
         ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
-
-        #----------------------------------#
-        #           刷写坐标
-        #----------------------------------#
-        plot_t1=time.time()
-        plt.cla()
+        while True:
+            locus = ctypes.cast(locus_address, ctypes.py_object).value
+            img = plt.imread(self.board_path)
+            #----------------------------------#
+            #           刷写坐标
+            #----------------------------------#
+            plot_t1=time.time()
+            plt.cla()
                 #print("00000000000000000000000000000")
-        ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
+            ax.imshow(img, extent=[0, 510.6 * ratio, 0, 161 * ratio])
                 #print("11111111111111111111111111111")
-        #----------------------------------#
-        #       统计冰壶球个数
-        #----------------------------------#
-        yellow_nums = len(locus[-1].keys())     #黄色冰壶数量
-        red_nums = len(locus[-2].keys())        #红色冰壶数量
-        plt.text(0, 165, s='yellow:{}'.format(yellow_nums), fontsize=10)
-        plt.text(0, 180, s='red:{}'.format(red_nums), fontsize=10)
+            #----------------------------------#
+            #       统计冰壶球个数
+            #----------------------------------#
+            yellow_nums = len(locus[-1].keys())     #黄色冰壶数量
+            red_nums = len(locus[-2].keys())        #红色冰壶数量
+            plt.text(0, 165, s='yellow:{}'.format(yellow_nums), fontsize=10)
+            plt.text(0, 180, s='red:{}'.format(red_nums), fontsize=10)
                 ## print('y=', yellow_nums)
                 ## print('r=', red_nums)
-        #----------------------------------#
-        #           实时绘制坐标
-        #——————————————————————————————————#
-        colors = ['red', 'yellow']
-        for i in range(len(locus)):
-            for j, ids in enumerate(locus[i]):
-                color = colors[i % 2]
-                plt.plot(locus[i][ids][0], locus[i][ids][1], color=color)
-        plot_t2=time.time()
-        print("画图时间：",plot_t2-plot_t1)
-        plt.pause(0.001)
-        plt.ion()
+            #----------------------------------#
+            #           实时绘制坐标
+            #——————————————————————————————————#
+            colors = ['red', 'yellow']
+            for i in range(len(locus)):
+                for j, ids in enumerate(locus[i]):
+                    color = colors[i % 2]
+                    #if len(locus[i][ids][0])==len(locus[i][ids][1]):
+                    plt.plot(locus[i][ids][0], locus[i][ids][1], color=color)
+            plot_t2=time.time()
+            print("画图时间：",plot_t2-plot_t1)
+            plt.pause(0.001)
+            plt.ion()
     
 
 if __name__ == "__main__":
@@ -138,14 +141,13 @@ if __name__ == "__main__":
     locus = [{} for i in range( len(H_array)*2 ) ]
     locus_address=id(locus)
     
-    getLocus=Plot_Realtime()
-    thread_01 = getLocus(H_array)
+    #getLocus=Plot_Realtime()
+    thread_01 = Plot_Realtime(H_array)
 
-    plotTrajectory = plotThread()
-    thread_02 = plotTrajectory(img_path)
+    #plotTrajectory = plotThread()
+    thread_02 = plotThread(img_path)
 
     # 启动线程
     thread_01.start()
     thread_02.start()
     #P = Plot_Realtime(img_path, H_path)     # create a new instance
-    
